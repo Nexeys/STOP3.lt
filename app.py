@@ -4,7 +4,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
-from helpers import login_required, usd
+from helpers import login_required, usd, comma_format
 from db import get_db_connection
 
 load_dotenv()
@@ -12,20 +12,38 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
 app.jinja_env.filters["usd"] = usd
+app.jinja_env.filters["comma_format"] = comma_format
+
+@app.context_processor
+def inject_hud_data():
+    """Automatically sends user stats to the HUD in layout.html on every page."""
+    if "user_id" in session:
+        conn = get_db_connection()
+
+        user = conn.execute(
+            "SELECT username FROM users WHERE id = ?",
+            (session["user_id"],)
+        ).fetchone()
+
+        if user:
+            return {"hud_username": user["username"]}
+        
+    return {}
+
 
 @app.route("/")
 @login_required
 def index():
     """
-    Display the user's main portfolio dashboard (TODO).
+    Display the user's main portfolio dashboard.
     Fetches the logged-in user's profile information from the database
     and renders the home screen.
     """
     conn = get_db_connection()
-    username = conn.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],)).fetchone()["username"]
+    game = conn.execute("SELECT cash, subscribers, current_month FROM games WHERE user_id = ? AND status = 'ACTIVE'", (session["user_id"],)).fetchone()
     conn.close()
 
-    return render_template("index.html", username = username)
+    return render_template("index.html", game = game)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -60,11 +78,13 @@ def register():
         hashed_password = generate_password_hash(password)
         
         conn.execute("INSERT INTO users (username, hash) VALUES (?, ?)", (username, hashed_password))
+        session["user_id"] = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()["id"]
+        conn.execute("INSERT INTO games (user_id) VALUES (?)", (session["user_id"],))
         conn.commit()
         conn.close()
         
-        flash("Registration succesful! Please log in.")
-        return redirect("/login")
+        flash("Registration succesful!")
+        return redirect("/")
     
     else:
         return render_template("register.html")

@@ -1,8 +1,12 @@
 {% extends "layout.html" %}
 
-{% block title %} Index {% endblock %}
+{% block title %} HUD {% endblock %}
 
 {% block main %}
-    <h2>Index</h2>
-    <p>Username: {{ username }}</p>
+    <h2>CASH: {{ game.cash | usd }}</h2>
+    <h2>SUBSCRIBERS: {{ game.subscribers | comma_format }}</h2>
+    <h2>MONTH: {{ game.current_month }} </h2>
+    <form action="/next">
+        <button type="submit">NEXT MONTH</button>
+    </form>
 {% endblock %}

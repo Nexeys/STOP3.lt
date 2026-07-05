@@ -28,3 +28,13 @@ def usd(value):
         return "$0.00"  
     else:
         return f"${value / 100:,.2f}"
+    
+
+def comma_format(value):
+    """
+    Format a generic numeric value.
+
+    Takes a numeric amount (representing cents) and converts it into a 
+    standard, human-readable string
+    """
+    return f"{value:,}"
