@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 from helpers import login_required, usd, comma_format
-from db import get_db_connection
+import db
 
 load_dotenv()
 
@@ -18,13 +18,7 @@ app.jinja_env.filters["comma_format"] = comma_format
 def inject_hud_data():
     """Automatically sends user stats to the HUD in layout.html on every page."""
     if "user_id" in session:
-        conn = get_db_connection()
-
-        user = conn.execute(
-            "SELECT username FROM users WHERE id = ?",
-            (session["user_id"],)
-        ).fetchone()
-
+        user = db.get_user_data(session["user_id"])
         if user:
             return {"hud_username": user["username"]}
         
@@ -39,10 +33,7 @@ def index():
     Fetches the logged-in user's profile information from the database
     and renders the home screen.
     """
-    conn = get_db_connection()
-    game = conn.execute("SELECT cash, subscribers, current_month FROM games WHERE user_id = ? AND status = 'ACTIVE'", (session["user_id"],)).fetchone()
-    conn.close()
-
+    game = db.get_game_data(session["user_id"])
     return render_template("index.html", game = game)
 
 
@@ -65,23 +56,15 @@ def register():
         
         if password != confirmation:
             flash("Passwords do not match!")
-            return redirect("/register")
+            return redirect("/register")        
         
-        conn = get_db_connection()
-        
-        existing_user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-        if existing_user:
-            conn.close()
+        if db.check_username(username):
             flash("That username is already registered!")
             return redirect("/register")
         
-        hashed_password = generate_password_hash(password)
-        
-        conn.execute("INSERT INTO users (username, hash) VALUES (?, ?)", (username, hashed_password))
-        session["user_id"] = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()["id"]
-        conn.execute("INSERT INTO games (user_id) VALUES (?)", (session["user_id"],))
-        conn.commit()
-        conn.close()
+        db.register_user(username, generate_password_hash(password))
+        session["user_id"] = db.check_username(username)["id"]
+        db.generate_new_game(session["user_id"])
         
         flash("Registration succesful!")
         return redirect("/")
@@ -105,23 +88,18 @@ def login():
         if not username or not password:
             flash("You must fill out all fields!")
             return redirect("/login")
-        
-        conn = get_db_connection()
 
-        user_row = conn.execute("SELECT id, hash FROM users WHERE username = ?", (username,)).fetchone()
+        user_row = db.check_username(username)
         if not user_row:
-            conn.close()
             flash("Username doesn't exist! Please try again.")
-            return redirect("login")
+            return redirect("/login")
         
         if not check_password_hash(user_row["hash"], password):
-            conn.close()
             flash("Incorrect password! Please try again.")
             return redirect("/login")
         
         flash("Succesfully logged in!")
         session["user_id"] = user_row["id"]
-        conn.close()
         return redirect("/")
     else:   
         return render_template("login.html")
@@ -134,7 +112,7 @@ def logout():
     Clears all temporary data from the session cookie and redirects to login.
     """
     session.clear()
-    flash("Logged out successfully.")
+    flash("Logged out succesfully.")
     return redirect("/login")
 
 if __name__ == "__main__":
