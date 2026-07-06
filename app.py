@@ -14,15 +14,17 @@ app.secret_key = os.environ.get("SECRET_KEY")
 app.jinja_env.filters["usd"] = usd
 app.jinja_env.filters["comma_format"] = comma_format
 
+BASE_CANCEL_PENALTY = 0.5
+
 @app.context_processor
 def inject_hud_data():
     """Automatically sends user stats to the HUD in layout.html on every page."""
     if "user_id" in session:
         user = db.get_user_data(session["user_id"])
         if user:
-            return {"hud_username": user["username"]}
+            return {"hud_username": user["username"], "penalty": BASE_CANCEL_PENALTY * 100}
         
-    return {}
+    return {"penalty": BASE_CANCEL_PENALTY * 100}
 
 
 @app.route("/")
@@ -34,7 +36,30 @@ def index():
     and renders the home screen.
     """
     game = db.get_game_data(session["user_id"])
-    return render_template("index.html", game = game)
+    portfolios = db.get_portfolio_data(game["id"])
+    return render_template("index.html", game = game, portfolios = portfolios)
+
+
+@app.route("/produce", methods=["POST"])
+def produce():
+    """Perform the action of buying tv show."""
+    genre = request.form.get("genre")
+    user_id = session["user_id"]
+    if not db.produce(genre, user_id):
+        flash("Not enough cash!")
+
+    return redirect("/")
+
+
+@app.route("/cancel", methods=["POST"])
+def cancel():
+    """Perform the action of selling tv show."""
+    genre = request.form.get("genre")
+    user_id = session["user_id"]
+    if not db.cancel(genre, user_id, BASE_CANCEL_PENALTY):
+        flash("You don't have any episodes!")
+
+    return redirect("/")
 
 
 @app.route("/register", methods=["GET", "POST"])

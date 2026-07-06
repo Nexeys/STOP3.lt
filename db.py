@@ -46,3 +46,36 @@ def generate_new_game(user_id):
     conn.execute("INSERT INTO portfolios (game_id, genre) SELECT ?, name FROM genres", (game_id,))
     conn.commit()
     conn.close()
+
+def get_portfolio_data(game_id):
+    conn = get_db_connection()
+    portfolios = conn.execute("SELECT p.genre, p.episodes_produced, g.base_cost, g.base_subscriber_yield FROM portfolios p JOIN genres g ON p.genre = g.name WHERE p.game_id = ?", (game_id,)).fetchall()
+    conn.close()
+    return portfolios
+
+def produce(genre, user_id):
+    conn = get_db_connection()
+    game = conn.execute("SELECT id, cash FROM games WHERE user_id = ? AND status = 'ACTIVE'", (user_id,)).fetchone()
+    if game["cash"] >= (cost := conn.execute("SELECT base_cost FROM genres WHERE name = ?", (genre,)).fetchone()["base_cost"]):
+        conn.execute("UPDATE portfolios SET episodes_produced = episodes_produced + 1 WHERE game_id = ? and genre = ?", (game["id"], genre))
+        conn.execute("UPDATE games SET cash = cash - ? WHERE id = ?", (cost, game["id"]))
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.close()
+        return False
+    
+def cancel(genre, user_id, penalty):
+    conn = get_db_connection()
+    game = conn.execute("SELECT id, cash FROM games WHERE user_id = ? AND status = 'ACTIVE'", (user_id,)).fetchone()
+    if conn.execute("SELECT episodes_produced FROM portfolios WHERE game_id = ? AND genre = ?", (game["id"], genre)).fetchone()["episodes_produced"] > 0:
+        cash_return = penalty * conn.execute("SELECT base_cost FROM genres WHERE name = ?", (genre,)).fetchone()["base_cost"]
+        conn.execute("UPDATE portfolios SET episodes_produced = episodes_produced - 1 WHERE game_id = ? and genre = ?", (game["id"], genre))
+        conn.execute("UPDATE games SET cash = cash + ? WHERE id = ?", (cash_return, game["id"]))
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.close()
+        return False

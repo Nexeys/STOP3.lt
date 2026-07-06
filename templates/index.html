@@ -1,6 +1,9 @@
 {% extends "layout.html" %}
 
 {% block title %} HUD {% endblock %}
+{% block stylesheet %}
+<link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+{% endblock %}
 
 {% block main %}
     <h2>CASH: {{ game.cash | usd }}</h2>
@@ -9,4 +12,17 @@
     <form action="/next">
         <button type="submit">NEXT MONTH</button>
     </form>
+    {% for portfolio in portfolios %}
+    <div class="portfolio">
+        <h3>{{ portfolio.genre }}</h3>
+        <h4>COUNT: {{ portfolio.episodes_produced }}</h4>
+        <h4>SUBSCRIBER YIELD: {{ portfolio.base_subscriber_yield | comma_format }}</h4>
+        <form action="/produce" method="POST">
+            <button type="submit" name="genre" value="{{ portfolio.genre }}">PRODUCE ({{ portfolio.base_cost | usd }})</button>
+        </form>
+        <form action="/cancel" method="POST">
+            <button type="submit" name="genre" value="{{ portfolio.genre }}">CANCEL ({{ penalty }}%)</button>
+        </form>
+    </div>
+    {% endfor %}
 {% endblock %}
