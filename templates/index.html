@@ -6,8 +6,9 @@
 {% endblock %}
 
 {% block main %}
-    <h2>CASH: {{ game.cash | usd }}</h2>
-    <h2>SUBSCRIBERS: {{ game.subscribers | comma_format }}</h2>
+    <h2>EVENT: {{ gain.event or ""}}<h2>
+    <h2>CASH: {{ game.cash | usd }} || Gain: {{ (gain.cash or 0) | usd}}</h2>
+    <h2>SUBSCRIBERS: {{ game.subscribers | comma_format }} || Gain: {{ (gain.subscribers or 0) | comma_format}}</h2>
     <h2>MONTH: {{ game.current_month }} </h2>
     <form action="/next">
         <button type="submit">NEXT MONTH</button>

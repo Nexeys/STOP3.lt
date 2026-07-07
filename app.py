@@ -4,7 +4,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
-from helpers import login_required, usd, comma_format
+from helpers import login_required, usd, comma_format, calculate_gain
 import db
 
 load_dotenv()
@@ -14,7 +14,6 @@ app.secret_key = os.environ.get("SECRET_KEY")
 app.jinja_env.filters["usd"] = usd
 app.jinja_env.filters["comma_format"] = comma_format
 
-BASE_CANCEL_PENALTY = 0.5
 
 @app.context_processor
 def inject_hud_data():
@@ -22,9 +21,8 @@ def inject_hud_data():
     if "user_id" in session:
         user = db.get_user_data(session["user_id"])
         if user:
-            return {"hud_username": user["username"], "penalty": BASE_CANCEL_PENALTY * 100}
-        
-    return {"penalty": BASE_CANCEL_PENALTY * 100}
+            return {"hud_username": user["username"], "penalty": db.get_game_data(session["user_id"])["base_cancel_penalty"] * 100}
+    return {}
 
 
 @app.route("/")
@@ -37,7 +35,15 @@ def index():
     """
     game = db.get_game_data(session["user_id"])
     portfolios = db.get_portfolio_data(game["id"])
-    return render_template("index.html", game = game, portfolios = portfolios)
+    gain = db.get_last_month(game["id"], game["current_month"])
+
+    return render_template("index.html", game = game, portfolios = portfolios, gain = gain)
+
+
+@app.route("/next")
+def next_month():
+    calculate_gain(session["user_id"])
+    return redirect("/")
 
 
 @app.route("/produce", methods=["POST"])
@@ -56,7 +62,7 @@ def cancel():
     """Perform the action of selling tv show."""
     genre = request.form.get("genre")
     user_id = session["user_id"]
-    if not db.cancel(genre, user_id, BASE_CANCEL_PENALTY):
+    if not db.cancel(genre, user_id, db.get_game_data(session["user_id"])["base_cancel_penalty"]):
         flash("You don't have any episodes!")
 
     return redirect("/")

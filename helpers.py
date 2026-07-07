@@ -1,5 +1,6 @@
 from functools import wraps
 from flask import redirect, session
+import db
 
 def login_required(f):
     """
@@ -38,3 +39,19 @@ def comma_format(value):
     standard, human-readable string
     """
     return f"{value:,}"
+
+
+def calculate_gain(user_id):
+    new_subscribers = 0
+    event = db.get_random_event()
+    game_data = db.get_game_data(user_id)
+    for portfolio in db.get_portfolio_data(game_data["id"]):
+        genre_subscribers = portfolio["episodes_produced"] * portfolio["base_subscriber_yield"]
+        if event["specific_genre"] in (None, portfolio["genre"]):
+            genre_subscribers = genre_subscribers * event["modifier_pct"] // 100
+        new_subscribers += genre_subscribers
+
+    cash = (new_subscribers + game_data["subscribers"]) * game_data["base_cash_per_subscriber"]
+
+    db.log_month(game_data["id"], event["title"], new_subscribers, cash, game_data["current_month"])
+    

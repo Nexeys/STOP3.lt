@@ -21,7 +21,7 @@ def get_user_data(user_id):
 def get_game_data(user_id):
     """Return game row from database, based on cookies"""
     conn = get_db_connection()
-    game = conn.execute("SELECT id, cash, subscribers, current_month FROM games WHERE user_id = ? AND status = 'ACTIVE'", (user_id,)).fetchone()
+    game = conn.execute("SELECT * FROM games WHERE user_id = ? AND status = 'ACTIVE'", (user_id,)).fetchone()
     conn.close()
     return game
 
@@ -61,6 +61,7 @@ def produce(genre, user_id):
         conn.execute("UPDATE games SET cash = cash - ? WHERE id = ?", (cost, game["id"]))
         conn.commit()
         conn.close()
+        log_action(game["id"], "PRODUCE", genre, 1, cost)
         return True
     else:
         conn.close()
@@ -75,7 +76,33 @@ def cancel(genre, user_id, penalty):
         conn.execute("UPDATE games SET cash = cash + ? WHERE id = ?", (cash_return, game["id"]))
         conn.commit()
         conn.close()
+        log_action(game["id"], "CANCEL", genre, 1, cash_return)
         return True
     else:
         conn.close()
         return False
+    
+def log_action(game_id, action, genre, episodes, cost):
+    conn = get_db_connection()
+    conn.execute("INSERT INTO history (game_id, action, genre, episodes, cost) VALUES (?, ?, ?, ?, ?)", (game_id, action, genre, episodes, cost))
+    conn.commit()
+    conn.close()
+
+def get_random_event():
+    conn = get_db_connection()
+    event = conn.execute("SELECT * FROM random_events ORDER BY RANDOM() LIMIT 1").fetchone()
+    conn.close()
+    return event
+
+def log_month(game_id, event_title, subscribers, cash, month):
+    conn = get_db_connection()
+    conn.execute("INSERT INTO month_history (game_id, month, cash, subscribers, event) VALUES (?, ?, ?, ?, ?)", (game_id, month, cash, subscribers, event_title))
+    conn.execute("UPDATE games SET subscribers = subscribers + ?, cash = cash + ?, current_month = current_month + 1 WHERE id = ?", (subscribers, cash, game_id))
+    conn.commit()
+    conn.close()
+
+def get_last_month(game_id, month):
+    conn = get_db_connection()
+    last_month = conn.execute("SELECT * FROM month_history WHERE game_id = ? AND month = ? - 1", (game_id, month)).fetchone()
+    conn.close()
+    return last_month
