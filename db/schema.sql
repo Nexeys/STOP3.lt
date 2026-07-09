@@ -91,7 +91,8 @@ CREATE TABLE
     users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
-        hash TEXT NOT NULL
+        hash TEXT NOT NULL,
+        last_game INTEGER
     );
 
 CREATE TABLE
@@ -101,7 +102,7 @@ CREATE TABLE
         cash INTEGER DEFAULT 5000000000,
         subscribers INTEGER DEFAULT 1000000,
         current_month INTEGER DEFAULT 1,
-        status TEXT DEFAULT ('ACTIVE') CHECK (status IN ('ACTIVE', 'WON', 'BANKRUPT', 'LOST')),
+        status TEXT DEFAULT ('ACTIVE') CHECK (status IN ('ACTIVE', 'WON', 'LOST')),
         base_cash_per_subscriber INTEGER DEFAULT 15,
         base_cancel_penalty INTEGER DEFAULT 50,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

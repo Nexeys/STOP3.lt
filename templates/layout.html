@@ -15,6 +15,7 @@
         <strong>STOP3.lt</strong> |  
         {% if session.get("user_id") %}
         <span>Username: {{ hud_username }}</span> | 
+        <span>Last game: {{ last_game.status }}</span> | 
         <a href="/logout">Log Out</a>
         {% else %}
         <a href="/login">Log In</a> |

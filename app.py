@@ -20,8 +20,11 @@ def inject_hud_data():
     """Automatically sends user stats to the HUD in layout.html on every page."""
     if "user_id" in session:
         user = db.get_user_data(session["user_id"])
+        last_game = db.get_last_game(session["user_id"])
+        if last_game is None:
+            last_game = {"status": ""}
         if user:
-            return {"hud_username": user["username"], "penalty": db.get_game_data(session["user_id"])["base_cancel_penalty"] * 100}
+            return {"hud_username": user["username"], "penalty": db.get_game_data(session["user_id"])["base_cancel_penalty"], "last_game": last_game}
     return {}
 
 
@@ -62,7 +65,7 @@ def cancel():
     """Perform the action of selling tv show."""
     genre = request.form.get("genre")
     user_id = session["user_id"]
-    if not db.cancel(genre, user_id, db.get_game_data(session["user_id"])["base_cancel_penalty"]):
+    if not db.cancel(genre, user_id):
         flash("You don't have any episodes!")
 
     return redirect("/")

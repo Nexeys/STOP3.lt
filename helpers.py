@@ -52,6 +52,5 @@ def calculate_gain(user_id):
         new_subscribers += genre_subscribers
 
     cash = (new_subscribers + game_data["subscribers"]) * game_data["base_cash_per_subscriber"]
-
     db.log_month(game_data["id"], event["title"], new_subscribers, cash, game_data["current_month"])
     
